@@ -56,6 +56,10 @@
   (when (> (display-color-cells) 8)
     (hl-line-mode t)))
 
+(defun turn-on-hl-line-mode ()
+  (when (> (display-color-cells) 8) (hl-line-mode t)))
+
+
 (defun esk-turn-on-save-place-mode ()
   (require 'saveplace)
   (setq save-place t))
@@ -67,10 +71,18 @@
                                     ,(make-char 'greek-iso8859-7 107))
                     nil))))))
 
-(defun esk-add-watchwords ()
+
+
+
+(defun turn-on-idle-highlight ()
+  (idle-highlight-mode t))
+
+(defun add-watchwords ()
+
   (font-lock-add-keywords
    nil '(("\\<\\(FIX\\(ME\\)?\\|TODO\\|HACK\\|REFACTOR\\|NOCOMMIT\\)"
           1 font-lock-warning-face t))))
+
 
 (add-hook 'prog-mode-hook 'esk-local-column-number-mode)
 (add-hook 'prog-mode-hook 'esk-local-comment-auto-fill)
@@ -87,6 +99,21 @@
   (if (functionp 'tool-bar-mode) (tool-bar-mode -1)))
 
 (defun esk-untabify-buffer ()
+
+(add-hook 'coding-hook 'local-column-number-mode)
+(add-hook 'coding-hook 'local-comment-auto-fill)
+(add-hook 'coding-hook 'turn-on-hl-line-mode)
+(add-hook 'coding-hook 'turn-on-save-place-mode)
+(add-hook 'coding-hook 'pretty-lambdas)
+(add-hook 'coding-hook 'add-watchwords)
+(add-hook 'coding-hook 'turn-on-idle-highlight)
+  
+(defun run-coding-hook ()
+  "Enable things that are convenient across all coding buffers."
+  (run-hooks 'coding-hook))
+
+(defun untabify-buffer ()
+
   (interactive)
   (untabify (point-min) (point-max)))
 
@@ -113,8 +140,34 @@
     (error (message "Invalid expression")
            (insert (current-kill 0)))))
 
+
 (defun esk-sudo-edit (&optional arg)
   (interactive "p")
+
+(defun recompile-init ()
+  "Byte-compile all your dotfiles again."
+  (interactive)
+  (byte-recompile-directory dotfiles-dir 0)
+  ;; TODO: remove elpa-to-submit once everything's submitted.
+  (byte-recompile-directory (concat dotfiles-dir "elpa-to-submit/") 0))
+
+(defun regen-autoloads (&optional force-regen)
+  "Regenerate the autoload definitions file if necessary and load it."
+  (interactive "P")
+  (let ((autoload-dir (concat dotfiles-dir "/elpa-to-submit"))
+        (generated-autoload-file autoload-file))
+    (when (or force-regen
+              (not (file-exists-p autoload-file))
+              (some (lambda (f) (file-newer-than-file-p f autoload-file))
+                    (directory-files autoload-dir t "\\.el$")))
+      (message "Updating autoloads...")
+      (let (emacs-lisp-mode-hook)
+        (update-directory-autoloads autoload-dir))))
+  (load autoload-file))
+
+(defun sudo-edit (&optional arg)
+  (interactive "P")
+
   (if (or arg (not buffer-file-name))
       (find-file (concat "/sudo:root@localhost:" (ido-read-file-name "File: ")))
     (find-alternate-file (concat "/sudo:root@localhost:" buffer-file-name))))
@@ -152,10 +205,57 @@
 
 (defun esk-paredit-nonlisp ()
   "Turn on paredit mode for non-lisps."
+
   (interactive)
   (set (make-local-variable 'paredit-space-for-delimiter-predicates)
        '((lambda (endp delimiter) nil)))
   (paredit-mode 1))
+
+  (set (make-local-variable 'paredit-space-delimiter-chars)
+       (list ?\"))
+  (paredit-mode 1))
+
+(defun esk-space-for-delimiter? (endp delimiter)
+  (not (member major-mode '(ruby-mode espresso-mode js-mode js2-mode))))
+
+(eval-after-load 'paredit
+  '(add-to-list 'paredit-space-for-delimiter-predicates
+                'esk-space-for-delimiter?))
+
+(defun message-point ()
+  (interactive)
+  (message "%s" (point)))
+
+(defun esk-disapproval ()
+  (interactive)
+  (insert "ಠ_ಠ"))
+
+(defun esk-agent-path ()
+  (if (eq system-type 'darwin)
+      "*launch*/Listeners"
+    "*ssh*/agent\.*"))
+
+(defun esk-find-agent ()
+  (let* ((path-clause (format "-path \"%s\"" (esk-agent-path)))
+         (find-command (format "$(find -L /tmp -uid $UID %s -type s 2> /dev/null)"
+                               path-clause)))
+    (first (split-string
+            (shell-command-to-string
+             (format "/bin/ls -t1 %s | head -1" find-command))))))
+
+(defun fix-agent ()
+  (interactive)
+  (let ((agent (esk-find-agent)))
+    (setenv "SSH_AUTH_SOCK" agent)
+    (message agent)))
+
+(defun toggle-fullscreen ()
+  (interactive)
+  ;; TODO: this only works for X. patches welcome for other OSes.
+  (x-send-client-message nil 0 nil "_NET_WM_STATE" 32
+                         '(2 "_NET_WM_STATE_MAXIMIZED_VERT" 0))
+  (x-send-client-message nil 0 nil "_NET_WM_STATE" 32
+                         '(2 "_NET_WM_STATE_MAXIMIZED_HORZ" 0)))
 
 ;; A monkeypatch to cause annotate to ignore whitespace
 (defun vc-git-annotate-command (file buf &optional rev)

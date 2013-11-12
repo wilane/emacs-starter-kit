@@ -2,3 +2,11 @@
 .DS_Store
 starter-kit-2.*
 *.tar
+image-dired/
+elim/
+elpa-to-submit/nxhtml/etc/schema/xhtml-loader.rnc~
+session*
+tramp
+\#*
+history
+

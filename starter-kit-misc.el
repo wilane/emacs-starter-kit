@@ -47,14 +47,25 @@
 (add-hook 'before-make-frame-hook 'esk-turn-off-tool-bar)
 
 (setq visible-bell t
+      fringe-mode (cons 4 0)
+      echo-keystrokes 0.1
+      font-lock-maximum-decoration t
+
       inhibit-startup-message t
       color-theme-is-global t
       sentence-end-double-space nil
       shift-select-mode nil
       mouse-yank-at-point t
       uniquify-buffer-name-style 'forward
+
       whitespace-style '(face trailing lines-tail tabs)
       whitespace-line-column 80
+
+      ffap-machine-p-known 'reject
+      whitespace-style '(trailing lines space-before-tab
+                                  face indentation space-after-tab)
+      whitespace-line-column 100
+
       ediff-window-setup-function 'ediff-setup-windows-plain
       oddmuse-directory (concat user-emacs-directory "oddmuse")
       save-place-file (concat user-emacs-directory "places")
@@ -117,9 +128,27 @@ comment as a filename."
 
 (random t) ;; Seed the random-number generator
 
+(defalias 'auto-revert-tail-mode 'tail-mode)
+
 ;; Hippie expand: at times perhaps too hip
 (dolist (f '(try-expand-line try-expand-list try-complete-file-name-partially))
   (delete f hippie-expand-try-functions-list))
+
+(delete 'try-expand-line hippie-expand-try-functions-list)
+(delete 'try-expand-list hippie-expand-try-functions-list)
+(delete 'try-complete-file-name-partially hippie-expand-try-functions-list)
+(delete 'try-complete-file-name hippie-expand-try-functions-list)
+
+;; Don't clutter up directories with files~
+(setq backup-directory-alist `(("." . ,(expand-file-name
+                                        (concat dotfiles-dir "backups")))))
+
+;; nxhtml stuff
+(setq mumamo-chunk-coloring 'submode-colored
+      nxhtml-skip-welcome t
+      indent-region-mode t
+      rng-nxml-auto-validate-flag nil)
+>>>>>>> upstream/master
 
 ;; Add this back in at the end of the list.
 (add-to-list 'hippie-expand-try-functions-list 'try-complete-file-name-partially t)
@@ -130,6 +159,19 @@ comment as a filename."
 
 ;; Cosmetics
 
+
+    (add-to-list 'grep-find-ignored-files "target")
+    (add-to-list 'grep-find-ignored-files "*.class")))
+
+;; Default to unified diffs
+(setq diff-switches "-u -w")
+
+;; Cosmetics
+
+;; (set-face-background 'vertical-border "white")
+;; (set-face-foreground 'vertical-border "white")
+
+>>>>>>> upstream/master
 (eval-after-load 'diff-mode
   '(progn
      (set-face-foreground 'diff-added "green4")
